@@ -5,4 +5,9 @@ dist
 .DS_Store
 *.sqlite
 *.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
+.next
+apps/web/.next
+apps/web/data
 coverage
