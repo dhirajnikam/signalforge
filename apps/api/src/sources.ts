@@ -1,8 +1,10 @@
 import Parser from 'rss-parser';
+import { ingestTwitter } from './sources.twitter.js';
 
 export type Source =
   | { kind: 'rss'; name: string; url: string }
-  | { kind: 'web'; name: string; url: string };
+  | { kind: 'web'; name: string; url: string }
+  | { kind: 'twitter'; name: string; handle: string; provider?: 'rsshub' | 'nitter' | 'auto' };
 
 export type IngestedItem = {
   id: string;
@@ -17,9 +19,10 @@ export type IngestedItem = {
 
 const rssParser = new Parser();
 
-export async function ingestSource(source: Source): Promise<IngestedItem[]> {
+export async function ingestSource(source: Source, opts?: { rsshubBaseUrl?: string; nitterBaseUrl?: string }): Promise<IngestedItem[]> {
   if (source.kind === 'rss') return ingestRss(source);
   if (source.kind === 'web') return ingestWeb(source);
+  if (source.kind === 'twitter') return ingestTwitter(source, opts);
   return [];
 }
 

@@ -1,4 +1,3 @@
-import 'dotenv/config';
 import Fastify from 'fastify';
 import cron from 'node-cron';
 import { z } from 'zod';
@@ -11,8 +10,11 @@ const EnvSchema = z.object({
   SQLITE_PATH: z.string().default('./data/signalforge.sqlite'),
   OPENAI_API_KEY: z.string().optional(),
   OPENAI_MODEL: z.string().default('gpt-4o-mini'),
+  OPENAI_BASE_URL: z.string().optional(),
   REFRESH_CRON: z.string().default('*/30 * * * *'),
   SOURCES_JSON: z.string().default('[]'),
+  RSSHUB_BASE_URL: z.string().default('https://rsshub.app'),
+  NITTER_BASE_URL: z.string().default('https://nitter.net'),
 });
 
 const env = EnvSchema.parse(process.env);
@@ -50,7 +52,7 @@ async function runRefresh(companyOrEvent?: string) {
   const all: IngestedItem[] = [];
   for (const s of sources) {
     try {
-      const items = await ingestSource(s);
+      const items = await ingestSource(s, { rsshubBaseUrl: env.RSSHUB_BASE_URL, nitterBaseUrl: env.NITTER_BASE_URL });
       for (const it of items) {
         upsertItem(it);
         all.push(it);
@@ -80,7 +82,9 @@ async function runRefresh(companyOrEvent?: string) {
 
     const analysis = await analyzeItem({
       item,
+      // If OPENAI_API_KEY is set in the environment (e.g. Clawdbot runtime), we'll use it.
       openaiApiKey: env.OPENAI_API_KEY,
+      openaiBaseUrl: env.OPENAI_BASE_URL,
       model: env.OPENAI_MODEL,
       companyOrEvent,
     });
@@ -117,6 +121,12 @@ function parseSources(json: string): Source[] {
         z.discriminatedUnion('kind', [
           z.object({ kind: z.literal('rss'), name: z.string(), url: z.string().url() }),
           z.object({ kind: z.literal('web'), name: z.string(), url: z.string().url() }),
+          z.object({
+            kind: z.literal('twitter'),
+            name: z.string(),
+            handle: z.string(),
+            provider: z.enum(['rsshub', 'nitter', 'auto']).optional(),
+          }),
         ])
       )
       .parse(parsed);

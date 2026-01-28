@@ -27,11 +27,16 @@ export type Analysis = z.infer<typeof AnalysisSchema>;
 
 export async function analyzeItem(params: {
   item: IngestedItem;
+  /** Optional override. If omitted, uses process.env.OPENAI_API_KEY when present. */
   openaiApiKey?: string;
+  /** Optional override. If omitted, uses process.env.OPENAI_BASE_URL when present. */
+  openaiBaseUrl?: string;
   model: string;
   companyOrEvent?: string;
 }): Promise<Analysis> {
-  const { item, openaiApiKey, model, companyOrEvent } = params;
+  const { item, model, companyOrEvent } = params;
+  const openaiApiKey = params.openaiApiKey ?? process.env.OPENAI_API_KEY;
+  const openaiBaseUrl = params.openaiBaseUrl ?? process.env.OPENAI_BASE_URL;
 
   // No key? do a cheap heuristic analysis.
   if (!openaiApiKey) {
@@ -44,7 +49,7 @@ export async function analyzeItem(params: {
     };
   }
 
-  const client = new OpenAI({ apiKey: openaiApiKey });
+  const client = new OpenAI({ apiKey: openaiApiKey, baseURL: openaiBaseUrl });
   const focus = companyOrEvent ? `\nFocus requested: ${companyOrEvent}` : '';
 
   const prompt = `You are SignalForge, a high-signal analyst.
